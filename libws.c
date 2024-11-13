@@ -1658,7 +1658,7 @@ void ws_deinit_ssl(void)
  * @attention This is part of the internal API and is documented just
  * for completeness.
  */
-static void ws_accept()
+static void ws_accept(void)
 {
 	struct sockaddr_in client;     /* Client.                */
 	int connection_index;          /* Free connection slot.  */
