@@ -234,7 +234,7 @@ int max_clients=0;
  */
 static struct pollfd* serverFds;
 static int serverFdsCount=0;
-#define SERVER_POLL_TIMEOUT 500
+static int serverPollTimeout=0;
 
 /**
  * @brief event handler to notify changes
@@ -1742,7 +1742,7 @@ void ws_main_loop(void)
 	{
 		serverFds[i].revents=0;
 	}
-	int poll_count=poll(serverFds,serverFdsCount,SERVER_POLL_TIMEOUT);
+	int poll_count=poll(serverFds,serverFdsCount,serverPollTimeout);
 	if (poll_count<0)
 	{
 		return;
@@ -1780,7 +1780,10 @@ void ws_main_loop(void)
  * value. Each call _should_ have a different port and can have
  * different events configured.
  */
-int ws_socket(struct ws_events *evs, uint16_t port,int maxClients)
+int ws_socket(struct ws_events *evs,
+		uint16_t port,
+		int maxClients,
+		uint64_t pollTimeout)
 {
 	struct sockaddr_in server;     /* Server.                */
 	int reuse;                     /* Socket option.         */
@@ -1798,6 +1801,7 @@ int ws_socket(struct ws_events *evs, uint16_t port,int maxClients)
 	memcpy(&eventsHandler, evs, sizeof(struct ws_events));
 
 	max_clients=maxClients;
+	serverPollTimeout=pollTimeout;
 
 	/* Create socket. */
 	server_socket = socket(AF_INET, SOCK_STREAM, 0);

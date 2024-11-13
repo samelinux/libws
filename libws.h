@@ -56,7 +56,10 @@ int ws_sendtxt(int fd, const char *msg, bool broadcast);
 int ws_sendbin(int fd, const char *msg, uint64_t size, bool broadcast);
 int ws_close_client(int fd);
 
-int ws_socket(struct ws_events *evs, uint16_t port,int maxClients);
+int ws_socket(struct ws_events *evs,
+		uint16_t port,
+		int maxClients,
+		uint64_t pollTimeout);
 void ws_main_loop(void);
 void ws_shutdown(void);
 

@@ -106,7 +106,7 @@ int main(void)
 	evs.onclose   = &onclose;
 	evs.onmessage = &onmessage;
 
-	ws_socket(&evs, 443, 100);
+	ws_socket(&evs, 443, 100, 500);
 
 	while(1)
 	{
