@@ -27,6 +27,7 @@
 #define WS_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 /**
  * @brief events Web Socket events types.
