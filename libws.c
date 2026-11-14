@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) 2024  Luca Giacometti <samelinux@gmail.com>
  * Copyright (C) 2016-2021  Davidson Francis <davidsondfgl@gmail.com>
@@ -381,6 +382,23 @@ uint32_t is_utf8_len_state(uint8_t *s, size_t len, uint32_t state) {
 	return state;
 }
 
+void compact_serverfds()
+{
+	for(int i=1;i<max_clients;i++)
+	{
+		if(serverFds[i].fd==-1)
+		{
+			struct pollfd old=serverFds[i];
+			serverFds[i]=serverFds[i+1];
+			serverFds[i+1]=old;
+		}
+		else
+		{
+			break;
+		}
+	}
+}
+
 /**
  * @brief Handshake routines.
  */
@@ -546,11 +564,10 @@ static ssize_t send_all(SSL* sockfd, const void *buf, size_t len)
  */
 static int get_client_index(int fd)
 {
-	int i;
-	for (i = 0; i < max_clients; i++)
+	for (int i = 0; i < max_clients; i++)
 		if (client_socks[i].client_sock == fd)
-			break;
-	return i;
+			return i;
+	return -1;
 }
 
 /**
@@ -619,10 +636,22 @@ static int close_connection(int idx)
 	if (client_socks[idx].state != WS_STATE_OPEN)
 		return 0;
 
+	int sock = client_socks[idx].client_sock;
 	close_socket(client_socks[idx].client_sock,&(client_socks[idx].ssl_sock));
 	client_socks[idx].client_sock = -1;
 	client_socks[idx].ssl_sock = NULL;
 	client_socks[idx].state       = WS_STATE_CLOSED;
+
+	for(int i=1;i<=max_clients;i++)
+	{
+		if(serverFds[i].fd==sock)
+		{
+			serverFds[i].fd=-1;
+			serverFdsCount-=1;
+			break;
+		}
+	}
+	compact_serverfds();
 
 	return (0);
 }
@@ -1553,6 +1582,7 @@ static void ws_establishconnection(int connection_index)
 				break;
 			}
 		}
+		compact_serverfds();
 		client_socks[connection_index].client_sock = -1;
 		client_socks[connection_index].ssl_sock = NULL;
 		client_socks[connection_index].state       = WS_STATE_CLOSED;
@@ -1599,12 +1629,13 @@ void process_connection(int connection_index)
 					break;
 				}
 			}
+			compact_serverfds();
 			/* We only send a close frameSend close frame */
 			do_close(&wfd, -1);
+			close_socket(sock,&ssl_sock);
 			client_socks[connection_index].client_sock = -1;
 			client_socks[connection_index].ssl_sock = NULL;
 			client_socks[connection_index].state       = WS_STATE_CLOSED;
-			close_socket(sock,&ssl_sock);
 		}
 
 		if(wfd.msg)
@@ -1625,6 +1656,7 @@ void process_connection(int connection_index)
 				break;
 			}
 		}
+		compact_serverfds();
 		client_socks[connection_index].client_sock = -1;
 		client_socks[connection_index].ssl_sock = NULL;
 		client_socks[connection_index].state       = WS_STATE_CLOSED;
@@ -1757,7 +1789,10 @@ void ws_main_loop(void)
 		if(serverFds[i].fd!=-1 && (serverFds[i].revents & POLLIN))
 		{
 			int clientIndex=get_client_index(serverFds[i].fd);
-			process_connection(clientIndex);
+			if(clientIndex!=-1)
+			{
+				process_connection(clientIndex);
+			}
 		}
 	}
 }
